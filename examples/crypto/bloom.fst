@@ -33,7 +33,7 @@ type hash_fn = text -> Tot hash
 type bloom (ln:ln_t) = bl:seq bool{Seq.length bl = ln}
 
 logic type Le (ln:ln_t) (bl1:bloom ln) (bl2:bloom ln) =
-  forall i . (0 <= i && i < ln) ==> ((not (Seq.index bl1 i)) || (Seq.index bl2 i))
+  forall i . (0 <= i && i < ln) ==> ((Seq.index bl1 i) ==> (Seq.index bl2 i))
 
 val create: ln:ln_t -> Tot (bl:bloom ln)
 let create ln = Seq.create ln false
