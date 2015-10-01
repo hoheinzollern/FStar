@@ -50,8 +50,8 @@ let log_prot = ST.alloc []
 val client_cnt: ref uint16
 let client_cnt = lemma_repr_bytes_values 1; ST.alloc 1
 
-val server_cnt: ref uint16
-let server_cnt = lemma_repr_bytes_values 0; ST.alloc 0
+val server_cnt: r:ref uint16{r <> client_cnt}
+let server_cnt = recall client_cnt; lemma_repr_bytes_values 0; ST.alloc 0
 
 val server_max: l:list event -> Tot (c:uint16)
 let rec server_max l =
@@ -175,7 +175,6 @@ let main =
   server_cnt := 0;
   client_cnt := 1;
   let a = !log_prot in let b = !server_cnt in
-  assume(server_max a = b);
   let _ = client x in
   let x = server () in
   begin
