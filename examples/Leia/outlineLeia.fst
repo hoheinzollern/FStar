@@ -84,7 +84,7 @@ let rec max_event l =
 
 
 
- logic type SenderInvariant h  = (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 
+ logic type SenderInvariant h  = (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 /\ sender_cnt <> recv_cnt 
 
 val sender_log: d: bytes -> ST(unit)
   (requires (fun h -> SenderInvariant h))
@@ -122,8 +122,8 @@ type string16 = s:string{repr_bytes (length (utf8 s)) <= 2} (* up to 65K *)
 (* some basic, untrusted network controlled by the adversary *)
 
 assume val send: message -> ST unit
-		       (requires (fun h -> True))
-		       (ensures (fun h x h' -> modifies (!{}) h h'))
+		       (requires (fun h -> SenderInvariant h))
+		       (ensures (fun h x h' -> SenderInvariant h' /\ modifies (!{}) h h'))
 
 assume val recv: unit -> ST message
 		    (requires (fun h -> True))
@@ -141,8 +141,9 @@ let sender () =
         let sc = !sender_cnt in
         let t = construct_tag sc  data in
         let bs = uint16_to_bytes sc in 
- 	  send (bs @| data);  
-	  send (bs @| (mac k t));  
+	let smac = mac k t in 
+(*  	  send (bs @| data);  
+ 	  send (bs @| smac);   *)
    	  sender_log data; 
 	  None
 
