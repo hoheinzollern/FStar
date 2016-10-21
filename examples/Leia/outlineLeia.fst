@@ -70,7 +70,6 @@ assume val data: bytes
 val construct_tag: (c:nat{repr_bytes c <= 2}) -> (data:bytes) -> Tot (msg (2 + (length data)))
 let construct_tag c data =  ((uint16_to_bytes c) @| data)
 
-  
   opaque logic type req (msg:message) =  
   (exists n.  (repr_bytes n <= 2) /\ (msg  = construct_tag n data)) 
   
@@ -83,11 +82,7 @@ let rec max_event l =
       if c > prev then c else prev
       
 
-
-
- logic type SenderInvariant h  = contains h sender_cnt /\ contains h recv_cnt /\ contains h sender_log_prot /\ (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 /\ sender_cnt <> recv_cnt 
-
- (* logic type SenderInvariant h  = (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 /\ sender_cnt <> recv_cnt  *)
+ logic type SenderInvariant h  = contains h sender_cnt /\ contains h recv_cnt /\ contains h sender_log_prot /\ (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) <= 2 /\ sender_cnt <> recv_cnt 
 
 val sender_log: d: bytes -> ST(unit)
   (requires (fun h -> SenderInvariant h))
@@ -100,20 +95,18 @@ val sender_log: d: bytes -> ST(unit)
 let sender_log d =
   sender_log_prot := (Recv !sender_cnt d):: !sender_log_prot
 
-val inc_sender_counter: unit -> ST(unit)
-    (requires (fun h -> SenderInvariant h /\  repr_bytes ((sel h sender_cnt) + 1) = 2))
-    (ensures (fun h x h' -> SenderInvariant h'  /\ 
-                         (sel h sender_cnt) < (sel h' sender_cnt) /\
-                         modifies (!{sender_cnt}) h h'))
-
-    
-    
 
 let k = keygen req
 
 assume UTF8_inj:
   forall s0 s1.{:pattern (utf8 s0); (utf8 s1)}
      Seq.Eq (utf8 s0) (utf8 s1) ==> s0==s1
+
+val inc_sender_counter: unit -> ST(unit)
+    (requires (fun h -> SenderInvariant h /\  repr_bytes ((sel h sender_cnt) + 1) <= 2))
+    (ensures (fun h x h' -> SenderInvariant h'  /\ 
+                         (sel h sender_cnt) < (sel h' sender_cnt) /\
+                         modifies (!{sender_cnt}) h h'))
 
 let inc_sender_counter () =
       sender_cnt := !sender_cnt + 1
@@ -139,8 +132,8 @@ assume val recv: unit -> ST message
 val sender: unit -> ST (option string) 
                      (requires (fun h -> SenderInvariant h /\ repr_bytes ((sel h sender_cnt) + 1) = 2))
                       (ensures (fun h x h' -> SenderInvariant h' /\ modifies (!{sender_log_prot, sender_cnt, log}) h h'))                 
-(*                      (ensures (fun h x h' -> True))  *)
-		    
+
+
 let sender () = 
  	inc_sender_counter (); 
         let sc = !sender_cnt in
@@ -151,7 +144,7 @@ let sender () =
         send (bs @| smac);   
         sender_log data;  
       None
-
+      
 val receiver:  unit -> ST (option string) 
                      (requires (fun h -> True))
                      (ensures (fun h x h' -> modifies (!{log, recv_cnt}) h h'))                 
