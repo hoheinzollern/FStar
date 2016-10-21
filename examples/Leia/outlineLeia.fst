@@ -70,9 +70,10 @@ assume val data: bytes
 val construct_tag: (c:nat{repr_bytes c <= 2}) -> (data:bytes) -> Tot (msg (2 + (length data)))
 let construct_tag c data =  ((uint16_to_bytes c) @| data)
 
- opaque logic type req (msg:message) = 
-  (exists n.  (repr_bytes n <= 2) /\ (msg  = construct_tag n data))
-
+  
+  opaque logic type req (msg:message) =  
+  (exists n.  (repr_bytes n <= 2) /\ (msg  = construct_tag n data)) 
+  
 val max_event: list event -> Tot uint16
 let rec max_event l = 
   match l with
@@ -84,7 +85,7 @@ let rec max_event l =
 
 
 
- logic type SenderInvariant h  = (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 /\ sender_cnt <> recv_cnt 
+ logic type SenderInvariant h  = contains h sender_cnt /\ contains h recv_cnt /\ contains h sender_log_prot /\ (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 /\ sender_cnt <> recv_cnt 
 
  (* logic type SenderInvariant h  = (max_event (sel h sender_log_prot)) <= (sel h sender_cnt) /\ repr_bytes (sel h sender_cnt) = 2 /\ sender_cnt <> recv_cnt  *)
 
@@ -136,20 +137,20 @@ assume val recv: unit -> ST message
 		
 
 val sender: unit -> ST (option string) 
-                     (requires (fun h -> SenderInvariant h /\    repr_bytes ((sel h sender_cnt) + 1) = 2))
-                      (ensures (fun h x h' -> SenderInvariant h' /\ modifies (!{sender_log_prot, sender_cnt, log}) h h'))                
-(*                     (ensures (fun h x h' -> True)) *)
+                     (requires (fun h -> SenderInvariant h /\ repr_bytes ((sel h sender_cnt) + 1) = 2))
+                      (ensures (fun h x h' -> SenderInvariant h' /\ modifies (!{sender_log_prot, sender_cnt, log}) h h'))                 
+(*                      (ensures (fun h x h' -> True))  *)
 		    
 let sender () = 
-	inc_sender_counter ();
+ 	inc_sender_counter (); 
         let sc = !sender_cnt in
         let t = construct_tag sc  data in
         let bs = uint16_to_bytes sc in 
-  	send (bs @| data);  
-        sender_log data;  
 	let smac = mac k t in  
-  	  send (bs @| smac);   
-	  None
+  	send (bs @| data);  
+        send (bs @| smac);   
+        sender_log data;  
+      None
 
 val receiver:  unit -> ST (option string) 
                      (requires (fun h -> True))
