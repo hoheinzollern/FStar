@@ -70,8 +70,13 @@ assume val data: bytes
 val construct_tag: (c:nat{repr_bytes c <= 2}) -> (data:bytes) -> Tot (msg (2 + (length data)))
 let construct_tag c data =  ((uint16_to_bytes c) @| data)
 
-  opaque logic type req (msg:message) =  
+opaque logic type req (msg:message) =  
   (exists n.  (repr_bytes n <= 2) /\ (msg  = construct_tag n data)) 
+
+val construct_tag_is_injective: (c:(b:bytes{length b = 2})) -> (d:bytes)  -> Lemma (req (c @| d) ==> (d = data))
+
+let construct_tag_is_injective c d =  admit()
+
   
 val max_event: list event -> Tot uint16
 let rec max_event l = 
@@ -165,7 +170,11 @@ let receiver () =
     else 
       begin
       recv_cnt := xc;
-      if not (verify k xmac (xcnt @| xdata)) then Some "MAC verification failed"
-      else None
+      if not (verify k (xcnt @| xdata) xmac) then Some "MAC verification failed"
+      else begin
+        construct_tag_is_injective xcnt xdata;
+        assert (xdata = data);
+        None
+      end
     end
 

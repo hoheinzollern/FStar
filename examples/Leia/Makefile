@@ -2,7 +2,7 @@
 include Makefile.include
 
 CRYPTOLIB=$(FSTAR_HOME)/examples/crypto
-FSTAR=../../bin/fstar.exe
+FSTAR= ../../bin/fstar.exe
 
 
 STDLIB_ADMITS=--admit_fsi FStar.Seq --admit_fsi FStar.Set --admit_fsi FStar.SeqProperties --admit_fsi FStar.IO
